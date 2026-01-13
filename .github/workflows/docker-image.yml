@@ -1,4 +1,4 @@
-name: Docker Image CI (Normal)
+name: Docker Image CI (GHCR)
 
 on:
   push:
@@ -6,14 +6,21 @@ on:
   pull_request:
     branches: ["main"]
 
+# Necessary permissions to write to GHCR
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set app version
         run: echo "APP_VERSION=$(date +'v%Y-%m-%d-%H%M%S')" >> $GITHUB_ENV
+
       - name: Echo app version
         run: echo $APP_VERSION
 
@@ -23,19 +30,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push the Docker image
         run: |
+          # Convert repository name to lowercase to avoid registry errors
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
           docker buildx build . \
             --file Dockerfile \
-            --tag nannoda/exchange-rate-bot:$APP_VERSION \
-            --tag nannoda/exchange-rate-bot:latest \
+            --tag ghcr.io/$REPO_LOWER:$APP_VERSION \
+            --tag ghcr.io/$REPO_LOWER:latest \
             --build-arg APP_VERSION="$APP_VERSION" \
-            --build-arg BASE_IMAGE=nannoda/exchange-rate-bot:builder-latest \
+            --build-arg BASE_IMAGE=ghcr.io/$REPO_LOWER:builder-latest \
             --platform linux/amd64,linux/arm64 \
             --push
