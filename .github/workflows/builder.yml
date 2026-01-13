@@ -15,6 +15,12 @@ on:
       - Cargo.toml
       - Cargo.lock
       - .github/workflows/builder.yml
+
+# Added permissions for GHCR
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,18 +40,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
+      - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push the Docker image
         run: |
+          # Ensure the repo name is lowercase for the Docker tag
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
           docker buildx build . \
             --file Dockerfile.builder \
-            --tag nannoda/exchange-rate-bot:$BUILDER_VERSION \
-            --tag nannoda/exchange-rate-bot:builder-latest \
+            --tag ghcr.io/$REPO_LOWER:$BUILDER_VERSION \
+            --tag ghcr.io/$REPO_LOWER:builder-latest \
             --platform linux/amd64,linux/arm64 \
             --push
-
