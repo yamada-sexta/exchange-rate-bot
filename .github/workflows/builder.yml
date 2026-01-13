@@ -21,12 +21,13 @@ permissions:
   contents: read
   packages: write
 
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Create Builder Version
         run: echo "BUILDER_VERSION=builder-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
